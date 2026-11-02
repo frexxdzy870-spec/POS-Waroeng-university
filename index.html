@@ -79,7 +79,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 /* ====== KONFIGURASI SUPABASE (isi dari Project Settings > API). Kosong = mode demo lokal ====== */
 const CFG={https://pcgushhurdiuasvswnfu.supabase.co:'',sb_publishable_n7FPPQYA2W0SB_YTJZqiVA_krO3G9l7:''};
 const SHOP='Waroeeng University';
-const sb=CFG.SUPABASE_URL?supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
+const sb=CFG.https://pcgushhurdiuasvswnfu.supabase.co?supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
 const $=s=>document.querySelector(s),rp=n=>'Rp'+Math.round(n||0).toLocaleString('id-ID');
 const LS=k=>JSON.parse(localStorage.getItem(k)||'[]'),SV=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const MON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'],DAY=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
