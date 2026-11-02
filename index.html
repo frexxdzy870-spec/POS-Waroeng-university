@@ -106,15 +106,36 @@ function modal(h){return new Promise(r=>{const m=document.createElement('div');m
 /* ====== LOGIN ====== */
 function loginView(){$('#app').innerHTML=`<div id="login"><form onsubmit="login(event)">
  <small>KASIR</small><h1>${SHOP}</h1>
- <input id="u" placeholder="${sb?'Email kasir':'Username'}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${sb?'':'kasir'}" required>
+ <input id="u" placeholder="Username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${sb?'':'kasir'}" required>
  <input id="p" type="password" placeholder="Password" autocomplete="current-password" autocapitalize="none" value="${sb?'':'kasir123'}" required>
  <button class="blue">Masuk</button>
- <span class="muted">${sb?'Terhubung ke Supabase. Pakai akun yang dibuat di Authentication > Users.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini.'}</span></form></div>`}
-async function login(e){e.preventDefault();const u=$('#u').value.trim(),p=$('#p').value;
- try{if(sb){const{data,error}=await sb.auth.signInWithPassword({email:u,password:p});if(error)throw error;S.user=data.user.email}
- else{if(u.toLowerCase()!=='kasir'||p.trim()!=='kasir123')throw Error('Username atau password salah (demo: kasir / kasir123)');S.user='kasir'}
- await boot()}catch(er){toast(/invalid login/i.test(er.message)?'Email/password salah, atau akun belum dibuat di Supabase (Authentication > Users)':er.message)}}
-async function logout(){if(sb)await sb.auth.signOut();S.user=null;S.cart={};loginView()}
+ <span class="muted">${sb?'Terhubung ke Supabase. Masukkan username & password Anda.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini.'}</span></form></div>`}
+
+async function login(e){
+  e.preventDefault();
+  const u = $('#u').value.trim(), p = $('#p').value;
+  try {
+    if(sb){
+      // Asumsi sistem login backend mengecek tabel kustom 'users' atau autentikasi berbasis username
+      const { data, error } = await sb.from('users').select('*').eq('username', u).eq('password', p).single();
+      if(error || !data) throw Error('Username atau password salah');
+      S.user = data.username;
+    } else {
+      if(u.toLowerCase()!=='kasir'||p.trim()!=='kasir123') throw Error('Username atau password salah (demo: kasir / kasir123)');
+      S.user = 'kasir';
+    }
+    await boot();
+  } catch(er) {
+    toast(er.message);
+  }
+}
+
+async function logout(){
+  S.user = null;
+  S.cart = {};
+  loginView();
+}
+
 async function boot(){
  try{let p=await DB.all('products');
   if(!sb&&!p.length){for(const s of SEED)await DB.add('products',{name:s[0],category:s[1],price:s[2],cost:s[3],active:true});p=await DB.all('products')}
@@ -265,28 +286,19 @@ function setView(){return `<div class="view"><h2>Pengaturan menu & harga</h2>
  <div style="margin-top:16px"><button class="red" onclick="logout()">Keluar</button></div></div>`}
 async function editP(id,f,v){try{await DB.upd('products',id,{[f]:+v});S.products.find(p=>p.id===id)[f]=+v;toast('Tersimpan')}catch(er){toast(er.message)}}
 async function delP(id){if(!confirm('Hapus menu ini dari kasir? Riwayat lama tetap aman.'))return;try{await DB.upd('products',id,{active:false});S.products=S.products.filter(p=>p.id!==id);delete S.cart[id];render()}catch(er){toast(er.message)}}
-async function addP(){const name=$('#pn').value.trim(),price=+$('#pp').value;if(!name||!(price>0))return toast('Isi nama dan harga');
- try{const p=await DB.add('products',{name,category:$('#pc').value,price,cost:+$('#ph').value||0,active:true});S.products.push(p);render()}catch(er){toast(er.message)}}
+async function addP(){const name=$('#pn'].value.trim(),price=+$('#pp'].value;if(!name||!(price>0))return toast('Isi nama dan harga');
+ try{const p=await DB.add('products',{name,category:$('#pc'].value,price,cost:+$('#ph'].value||0,active:true});S.products.push(p);render()}catch(er){toast(er.message)}}
 function qris(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{localStorage.setItem('qris_img',r.result);toast('QRIS tersimpan')}catch{toast('Gambar terlalu besar')}};r.readAsDataURL(f)}
 
 /* ====== SHELL ====== */
 const NAV=[['kasir','🛒','Kasir'],['riwayat','🧾','Riwayat'],['pengeluaran','💸','Biaya'],['laporan','📊','Laporan'],['pengaturan','⚙️','Atur']];
 const V={kasir:kasirView,riwayat:riwayatView,pengeluaran:pengView,laporan:laporanView,pengaturan:setView};
 function render(){const y=window.scrollY,ph=document.activeElement?.placeholder;
- $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
+ $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
  if(S.view==='kasir')upd();charts();if(ph){const e=[...document.querySelectorAll('input')].find(x=>x.placeholder===ph);if(e&&ph==='Uang diterima'){e.focus();e.setSelectionRange(99,99)}}scrollTo(0,y)}
 
 /* ====== INISIALISASI APLIKASI ====== */
 document.addEventListener('DOMContentLoaded', async () => {
-  if (sb) {
-    try {
-      const { data } = await sb.auth.getSession();
-      if (data && data.session) {
-        S.user = data.session.user.email;
-        return boot();
-      }
-    } catch(e) { console.error(e); }
-  }
   loginView();
 });
 </script>
