@@ -116,7 +116,6 @@ async function login(e){
   const u = $('#u').value.trim(), p = $('#p').value;
   try {
     if(sb){
-      // Asumsi sistem login backend mengecek tabel kustom 'users' atau autentikasi berbasis username
       const { data, error } = await sb.from('users').select('*').eq('username', u).eq('password', p).single();
       if(error || !data) throw Error('Username atau password salah');
       S.user = data.username;
@@ -204,7 +203,7 @@ function pengView(){const a=agg('bulanan');
  <p class="muted" style="margin:10px 0">Bulan ${new Date(S.ref).toLocaleDateString('id-ID',{month:'long',year:'numeric'})} · total <b>${rp(a.pe)}</b></p>
  <div class="card tw"><table><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th class="r">Jumlah</th><th></th></tr>
  ${a.E.length?a.E.map(e=>`<tr><td>${dt(e.created_at)}</td><td><span class="chip">${e.category}</span></td><td>${e.note||'-'}</td><td class="r b">${rp(e.amount)}</td><td class="r"><button class="red sm" onclick="delExp(${e.id})">Hapus</button></td></tr>`).join(''):`<tr><td colspan="5" class="muted">Belum ada pengeluaran bulan ini.</td></tr>`}</table></div></div>`}
-async function addExp(){const amount=+$('#ea').value;if(!(amount>0))return toast('Isi jumlah pengeluaran');
+async function addExp(){const amount=+$('#ea'].value;if(!(amount>0))return toast('Isi jumlah pengeluaran');
  try{const e=await DB.add('expenses',{category:$('#ec').value,note:$('#en').value.trim(),amount});S.exp.unshift(e);render();toast('Pengeluaran disimpan')}catch(er){toast(er.message)}}
 async function delExp(id){if(!confirm('Hapus pengeluaran ini?'))return;try{await DB.del('expenses',id);S.exp=S.exp.filter(x=>x.id!==id);render()}catch(er){toast(er.message)}}
 
@@ -286,15 +285,15 @@ function setView(){return `<div class="view"><h2>Pengaturan menu & harga</h2>
  <div style="margin-top:16px"><button class="red" onclick="logout()">Keluar</button></div></div>`}
 async function editP(id,f,v){try{await DB.upd('products',id,{[f]:+v});S.products.find(p=>p.id===id)[f]=+v;toast('Tersimpan')}catch(er){toast(er.message)}}
 async function delP(id){if(!confirm('Hapus menu ini dari kasir? Riwayat lama tetap aman.'))return;try{await DB.upd('products',id,{active:false});S.products=S.products.filter(p=>p.id!==id);delete S.cart[id];render()}catch(er){toast(er.message)}}
-async function addP(){const name=$('#pn'].value.trim(),price=+$('#pp'].value;if(!name||!(price>0))return toast('Isi nama dan harga');
- try{const p=await DB.add('products',{name,category:$('#pc'].value,price,cost:+$('#ph'].value||0,active:true});S.products.push(p);render()}catch(er){toast(er.message)}}
+async function addP(){const name=$('#pn').value.trim(),price=+$('#pp').value;if(!name||!(price>0))return toast('Isi nama dan harga');
+ try{const p=await DB.add('products',{name,category:$('#pc').value,price,cost:+$('#ph').value||0,active:true});S.products.push(p);render()}catch(er){toast(er.message)}}
 function qris(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{localStorage.setItem('qris_img',r.result);toast('QRIS tersimpan')}catch{toast('Gambar terlalu besar')}};r.readAsDataURL(f)}
 
 /* ====== SHELL ====== */
 const NAV=[['kasir','🛒','Kasir'],['riwayat','🧾','Riwayat'],['pengeluaran','💸','Biaya'],['laporan','📊','Laporan'],['pengaturan','⚙️','Atur']];
 const V={kasir:kasirView,riwayat:riwayatView,pengeluaran:pengView,laporan:laporanView,pengaturan:setView};
 function render(){const y=window.scrollY,ph=document.activeElement?.placeholder;
- $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
+ $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
  if(S.view==='kasir')upd();charts();if(ph){const e=[...document.querySelectorAll('input')].find(x=>x.placeholder===ph);if(e&&ph==='Uang diterima'){e.focus();e.setSelectionRange(99,99)}}scrollTo(0,y)}
 
 /* ====== INISIALISASI APLIKASI ====== */
