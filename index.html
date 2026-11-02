@@ -106,12 +106,19 @@ const DB={
  async del(t,id){if(sb){const{error}=await sb.from(t).delete().eq('id',id);if(error)throw error;return}SV(t,LS(t).filter(x=>x.id!==id))}
 };
 
-const S={user:null,products:[],tx:[],exp:[],cart:{},method:'tunai',paid:'',view:'kasir',period:'harian',ref:new Date().toISOString().slice(0,10),bundle:null,charts:[]};
+/* Memuat cart dari localStorage jika ada */
+let savedCart = {};
+try {
+  savedCart = JSON.parse(localStorage.getItem('session_cart') || '{}');
+} catch(e) { savedCart = {}; }
+
+const S={user:null,products:[],tx:[],exp:[],cart:savedCart,method:'tunai',paid:'',view:'kasir',period:'harian',ref:new Date().toISOString().slice(0,10),bundle:null,charts:[]};
+
 function toast(m){const t=$('#toast');if(!t)return;t.textContent=m;t.className='on';clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',2600)}
 function modal(h){return new Promise(r=>{const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="box">${h}</div>`;
  m.onclick=e=>{const v=e.target.dataset.v;if(v!==undefined){m.remove();r(v==='1')}};document.body.append(m)})}
 
-/* ====== LOGIN ====== */
+/* ====== LOGIN & SESSION MANAGEMENT ====== */
 function loginView(){
   const app = $('#app');
   if(!app) return;
@@ -135,6 +142,7 @@ async function login(e){
       if(u.toLowerCase()!=='kasir'||p.trim()!=='kasir123') throw Error('Username atau password salah (demo: kasir / kasir123)');
       S.user = 'kasir';
     }
+    localStorage.setItem('session_user', S.user);
     await boot();
   } catch(er) {
     toast(er.message);
@@ -144,7 +152,19 @@ async function login(e){
 async function logout(){
   S.user = null;
   S.cart = {};
+  localStorage.removeItem('session_user');
+  localStorage.removeItem('session_cart');
   loginView();
+}
+
+async function checkSession(){
+  const savedUser = localStorage.getItem('session_user');
+  if(savedUser){
+    S.user = savedUser;
+    await boot();
+  } else {
+    loginView();
+  }
 }
 
 async function boot(){
@@ -171,7 +191,21 @@ function calc(){
  const sub=items.reduce((a,i)=>a+i.price*i.qty,0);let disc=0,pk=0;
  if(bundleOn()){const q=n=>S.cart[pid(n)]||0;let teh=q('Es Teh / Teh Hangat');const a=Math.min(q('Nasi Ayam Sambal Bajak'),teh);teh-=a;const b=Math.min(q('Nasi Telur Dadar Sambal Bajak'),teh);pk=a+b;disc=pk*2000}
  return{items,sub,disc,pk,total:sub-disc,count:items.reduce((a,i)=>a+i.qty,0)}}
-const add=(id,d=1)=>{const n=(S.cart[id]||0)+d;if(n>0)S.cart[id]=n;else delete S.cart[id];render()};
+
+const add=(id,d=1)=>{
+  const n=(S.cart[id]||0)+d;
+  if(n>0) S.cart[id]=n; 
+  else delete S.cart[id];
+  localStorage.setItem('session_cart', JSON.stringify(S.cart));
+  render();
+};
+
+function clearCart(){
+  S.cart = {};
+  localStorage.removeItem('session_cart');
+  render();
+}
+
 function setM(m){S.method=m;render()}
 function quick(n){S.paid=n;render()}
 function upd(){const c=calc(),v=+S.paid||0;const e=$('#chg');if(e)e.innerHTML=S.method==='tunai'?`<span>${v>=c.total?'Kembalian':'Kurang'}</span><span>${rp(Math.abs(v-c.total))}</span>`:`<span>QRIS</span><span>Scan & konfirmasi</span>`}
@@ -181,7 +215,7 @@ function kasirView(){const c=calc();return `<div class="view pos"><section>
  <h2>Minuman</h2><div class="pg">${prodGrid('Minuman')}</div>
  ${S.products.some(p=>!['Makanan','Minuman'].includes(p.category))?`<h2>Lainnya</h2><div class="pg">${S.products.filter(p=>!['Makanan','Minuman'].includes(p.category)).map(p=>`<button class="prod" onclick="add(${p.id})">${S.cart[p.id]?`<i>${S.cart[p.id]}</i>`:''}<span>${p.name}</span><b>${rp(p.price)}</b></button>`).join('')}</div>`:''}
  </section>
- <aside class="card cart" id="cart"><div class="row"><h3 class="grow">Pesanan</h3>${c.count?`<button class="alt sm" onclick="S.cart={};render()">Kosongkan</button>`:''}</div>
+ <aside class="card cart" id="cart"><div class="row"><h3 class="grow">Pesanan</h3>${c.count?`<button class="alt sm" onclick="clearCart()">Kosongkan</button>`:''}</div>
  ${c.items.length?c.items.map(i=>`<div class="line"><div class="grow"><div>${i.name}</div><div class="muted">${rp(i.price)}</div></div>
   <div class="q"><button class="alt" onclick="add(${i.id},-1)" aria-label="kurangi">−</button><b>${i.qty}</b><button class="alt" onclick="add(${i.id})" aria-label="tambah">+</button></div>
   <button class="red sm" onclick="add(${i.id},-${i.qty})" aria-label="hapus">✕</button></div>`).join(''):`<p class="muted" style="padding:18px 0">Belum ada pesanan. Ketuk menu untuk menambah.</p>`}
@@ -199,7 +233,9 @@ async function pay(){const c=calc();if(!c.items.length)return toast('Pilih menu 
  if(S.method==='qris'){const img=localStorage.getItem('qris_img');
   if(!await modal(`<h3>Bayar QRIS</h3><div class="tot">${rp(c.total)}</div>${img?`<img src="${img}" alt="QRIS">`:`<p class="muted">Gambar QRIS belum diunggah. Unggah di menu Pengaturan.</p>`}<button class="blue" data-v="1">Pembayaran diterima</button><button class="alt" data-v="0">Batal</button>`))return}
  try{const t=await DB.add('transactions',{cashier:S.user,method:S.method,subtotal:c.sub,discount:c.disc,total:c.total,paid,change:paid-c.total,items:c.items});
-  S.tx.unshift(t);S.cart={};S.paid='';render();
+  S.tx.unshift(t);S.cart={};S.paid='';
+  localStorage.removeItem('session_cart');
+  render();
   await modal(`<h3>Transaksi berhasil</h3>${S.method==='tunai'?`<div class="muted">Kembalian</div><div class="tot">${rp(t.change)}</div>`:`<div class="tot">${rp(t.total)}</div><div class="muted">via QRIS</div>`}<button class="blue" data-v="1">Transaksi baru</button>`)
  }catch(er){toast('Gagal menyimpan: '+er.message)}}
 
@@ -214,7 +250,9 @@ function riwayatView(){const a=agg('harian');
  <td><span class="chip">${t.method}</span></td><td class="r b">${rp(t.total)}</td>
  <td class="r"><button class="alt sm" onclick="editTx(${t.id})">Edit</button> <button class="red sm" onclick="delTx(${t.id})">Hapus</button></td></tr>`).join(''):`<tr><td colspan="5" class="muted">Belum ada transaksi pada tanggal ini.</td></tr>`}</table></div></div>`}
 async function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t||!confirm('Muat ulang pesanan ini ke kasir? Transaksi lama akan dihapus.'))return;
- try{await DB.del('transactions',id);S.tx=S.tx.filter(x=>x.id!==id);S.cart={};t.items.forEach(i=>{if(S.products.some(p=>p.id===i.id))S.cart[i.id]=i.qty});S.view='kasir';render();toast('Pesanan dimuat. Perbaiki lalu bayar.')}catch(er){toast(er.message)}}
+ try{await DB.del('transactions',id);S.tx=S.tx.filter(x=>x.id!==id);S.cart={};t.items.forEach(i=>{if(S.products.some(p=>p.id===i.id))S.cart[i.id]=i.qty});
+ localStorage.setItem('session_cart', JSON.stringify(S.cart));
+ S.view='kasir';render();toast('Pesanan dimuat. Perbaiki lalu bayar.')}catch(er){toast(er.message)}}
 async function delTx(id){if(!confirm('Hapus transaksi ini?'))return;try{await DB.del('transactions',id);S.tx=S.tx.filter(x=>x.id!==id);render()}catch(er){toast(er.message)}}
 
 /* ====== PENGELUARAN ====== */
@@ -315,7 +353,7 @@ function setView(){return `<div class="view"><h2>Pengaturan menu & harga</h2>
  <h2>Gambar QRIS</h2><div class="card"><input type="file" accept="image/*" onchange="qris(this)"><p class="muted" style="margin-top:6px">Unggah gambar QRIS toko; ditampilkan saat memilih pembayaran QRIS. Disimpan di perangkat ini.</p></div>
  <div style="margin-top:16px"><button class="red" onclick="logout()">Keluar</button></div></div>`}
 async function editP(id,f,v){try{await DB.upd('products',id,{[f]:+v});S.products.find(p=>p.id===id)[f]=+v;toast('Tersimpan')}catch(er){toast(er.message)}}
-async function delP(id){if(!confirm('Hapus menu ini dari kasir? Riwayat lama tetap aman.'))return;try{await DB.upd('products',id,{active:false});S.products=S.products.filter(p=>p.id!==id);delete S.cart[id];render()}catch(er){toast(er.message)}}
+async function delP(id){if(!confirm('Hapus menu ini dari kasir? Riwayat lama tetap aman.'))return;try{await DB.upd('products',id,{active:false});S.products=S.products.filter(p=>p.id!==id);delete S.cart[id];localStorage.setItem('session_cart', JSON.stringify(S.cart));render()}catch(er){toast(er.message)}}
 async function addP(){const name=$('#pn').value.trim(),price=+$('#pp').value;if(!name||!(price>0))return toast('Isi nama dan harga');
  try{const p=await DB.add('products',{name,category:$('#pc').value,price,cost:+$('#ph').value||0,active:true});S.products.push(p);render()}catch(er){toast(er.message)}}
 function qris(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{localStorage.setItem('qris_img',r.result);toast('QRIS tersimpan')}catch{toast('Gambar terlalu besar')}};r.readAsDataURL(f)}
@@ -336,7 +374,7 @@ function render(){
 
 /* ====== INISIALISASI APLIKASI ====== */
 document.addEventListener('DOMContentLoaded', () => {
-  loginView();
+  checkSession();
 });
 </script>
 </body>
