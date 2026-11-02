@@ -178,9 +178,37 @@ async function boot(){
   S.tx = (await DB.all('transactions')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
   S.exp = (await DB.all('expenses')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
   render();
+  
+  // Aktifkan Realtime Listener jika terhubung ke Supabase
+  setupRealtime();
  } catch(er){
   toast('Gagal memuat data: '+er.message);
  }
+}
+
+/* ====== REALTIME SYNC (SUPABASE) ====== */
+function setupRealtime(){
+  if(!sb) return;
+  // Mencegah duplikasi channel jika boot terpanggil berkali-kali
+  sb.removeAllChannels();
+
+  sb.channel('public-db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, async payload => {
+      S.tx = (await DB.all('transactions')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+      render();
+      toast('🔄 Riwayat transaksi diperbarui secara real-time');
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, async payload => {
+      S.exp = (await DB.all('expenses')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+      render();
+      toast('🔄 Data pengeluaran diperbarui secara real-time');
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, async payload => {
+      let p = await DB.all('products');
+      S.products = p.filter(x=>x.active);
+      render();
+    })
+    .subscribe();
 }
 
 /* ====== KASIR ====== */
@@ -233,7 +261,9 @@ async function pay(){const c=calc();if(!c.items.length)return toast('Pilih menu 
  if(S.method==='qris'){const img=localStorage.getItem('qris_img');
   if(!await modal(`<h3>Bayar QRIS</h3><div class="tot">${rp(c.total)}</div>${img?`<img src="${img}" alt="QRIS">`:`<p class="muted">Gambar QRIS belum diunggah. Unggah di menu Pengaturan.</p>`}<button class="blue" data-v="1">Pembayaran diterima</button><button class="alt" data-v="0">Batal</button>`))return}
  try{const t=await DB.add('transactions',{cashier:S.user,method:S.method,subtotal:c.sub,discount:c.disc,total:c.total,paid,change:paid-c.total,items:c.items});
-  S.tx.unshift(t);S.cart={};S.paid='';
+  // Local state update segera (realtime event juga akan menyusul sinkronisasi)
+  if(!sb){ S.tx.unshift(t); }
+  S.cart={};S.paid='';
   localStorage.removeItem('session_cart');
   render();
   await modal(`<h3>Transaksi berhasil</h3>${S.method==='tunai'?`<div class="muted">Kembalian</div><div class="tot">${rp(t.change)}</div>`:`<div class="tot">${rp(t.total)}</div><div class="muted">via QRIS</div>`}<button class="blue" data-v="1">Transaksi baru</button>`)
@@ -264,7 +294,9 @@ function pengView(){const a=agg('bulanan');
  <div class="card tw"><table><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th class="r">Jumlah</th><th></th></tr>
  ${a.E.length?a.E.map(e=>`<tr><td>${dt(e.created_at)}</td><td><span class="chip">${e.category}</span></td><td>${e.note||'-'}</td><td class="r b">${rp(e.amount)}</td><td class="r"><button class="red sm" onclick="delExp(${e.id})">Hapus</button></td></tr>`).join(''):`<tr><td colspan="5" class="muted">Belum ada pengeluaran bulan ini.</td></tr>`}</table></div></div>`}
 async function addExp(){const amount=+$('#ea').value;if(!(amount>0))return toast('Isi jumlah pengeluaran');
- try{const e=await DB.add('expenses',{category:$('#ec').value,note:$('#en').value.trim(),amount});S.exp.unshift(e);render();toast('Pengeluaran disimpan')}catch(er){toast(er.message)}}
+ try{const e=await DB.add('expenses',{category:$('#ec').value,note:$('#en').value.trim(),amount});
+ if(!sb){ S.exp.unshift(e); }
+ render();toast('Pengeluaran disimpan')}catch(er){toast(er.message)}}
 async function delExp(id){if(!confirm('Hapus pengeluaran ini?'))return;try{await DB.del('expenses',id);S.exp=S.exp.filter(x=>x.id!==id);render()}catch(er){toast(er.message)}}
 
 /* ====== AGREGASI ====== */
