@@ -76,10 +76,13 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 <body>
 <div id="app"></div><div id="toast"></div>
 <script>
-/* ====== KONFIGURASI SUPABASE (isi dari Project Settings > API). Kosong = mode demo lokal ====== */
-const CFG={https://pcgushhurdiuasvswnfu.supabase.co:'',sb_publishable_n7FPPQYA2W0SB_YTJZqiVA_krO3G9l7:''};
+/* ====== KONFIGURASI SUPABASE ====== */
+const CFG = {
+  SUPABASE_URL: 'https://pcgushhurdiuasvswnfu.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_n7FPPQYA2W0SB_YTJZqiVA_krO3G9l7'
+};
 const SHOP='Waroeeng University';
-const sb=CFG.https://pcgushhurdiuasvswnfu.supabase.co?supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
+const sb=(CFG.SUPABASE_URL && window.supabase)?supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
 const $=s=>document.querySelector(s),rp=n=>'Rp'+Math.round(n||0).toLocaleString('id-ID');
 const LS=k=>JSON.parse(localStorage.getItem(k)||'[]'),SV=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const MON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'],DAY=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
@@ -106,7 +109,7 @@ function loginView(){$('#app').innerHTML=`<div id="login"><form onsubmit="login(
  <input id="u" placeholder="${sb?'Email kasir':'Username'}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${sb?'':'kasir'}" required>
  <input id="p" type="password" placeholder="Password" autocomplete="current-password" autocapitalize="none" value="${sb?'':'kasir123'}" required>
  <button class="blue">Masuk</button>
- <span class="muted">${sb?'Terhubung ke Supabase. Pakai akun yang dibuat di Authentication > Users.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini. Isi CFG di index.html untuk memakai Supabase.'}</span></form></div>`}
+ <span class="muted">${sb?'Terhubung ke Supabase. Pakai akun yang dibuat di Authentication > Users.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini.'}</span></form></div>`}
 async function login(e){e.preventDefault();const u=$('#u').value.trim(),p=$('#p').value;
  try{if(sb){const{data,error}=await sb.auth.signInWithPassword({email:u,password:p});if(error)throw error;S.user=data.user.email}
  else{if(u.toLowerCase()!=='kasir'||p.trim()!=='kasir123')throw Error('Username atau password salah (demo: kasir / kasir123)');S.user='kasir'}
@@ -272,7 +275,20 @@ const V={kasir:kasirView,riwayat:riwayatView,pengeluaran:pengView,laporan:lapora
 function render(){const y=window.scrollY,ph=document.activeElement?.placeholder;
  $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
  if(S.view==='kasir')upd();charts();if(ph){const e=[...document.querySelectorAll('input')].find(x=>x.placeholder===ph);if(e&&ph==='Uang diterima'){e.focus();e.setSelectionRange(99,99)}}scrollTo(0,y)}
-(async()=>{if(sb){const{data}=await sb.auth.getSession();if(data.session){S.user=data.session.user.email;return boot()}}loginView()})();
+
+/* ====== INISIALISASI APLIKASI ====== */
+document.addEventListener('DOMContentLoaded', async () => {
+  if (sb) {
+    try {
+      const { data } = await sb.auth.getSession();
+      if (data && data.session) {
+        S.user = data.session.user.email;
+        return boot();
+      }
+    } catch(e) { console.error(e); }
+  }
+  loginView();
+});
 </script>
 </body>
 </html>
