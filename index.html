@@ -82,7 +82,15 @@ const CFG = {
   SUPABASE_ANON_KEY: 'sb_publishable_n7FPPQYA2W0SB_YTJZqiVA_krO3G9l7'
 };
 const SHOP='Waroeeng University';
-const sb=(CFG.SUPABASE_URL && window.supabase)?supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
+let sb = null;
+try {
+  if (CFG.SUPABASE_URL && window.supabase && window.supabase.createClient) {
+    sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  }
+} catch (e) {
+  console.warn("Supabase tidak dapat diinisialisasi, beralih ke LocalStorage.", e);
+}
+
 const $=s=>document.querySelector(s),rp=n=>'Rp'+Math.round(n||0).toLocaleString('id-ID');
 const LS=k=>JSON.parse(localStorage.getItem(k)||'[]'),SV=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const MON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'],DAY=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
@@ -99,17 +107,21 @@ const DB={
 };
 
 const S={user:null,products:[],tx:[],exp:[],cart:{},method:'tunai',paid:'',view:'kasir',period:'harian',ref:new Date().toISOString().slice(0,10),bundle:null,charts:[]};
-function toast(m){const t=$('#toast');t.textContent=m;t.className='on';clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',2600)}
+function toast(m){const t=$('#toast');if(!t)return;t.textContent=m;t.className='on';clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',2600)}
 function modal(h){return new Promise(r=>{const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="box">${h}</div>`;
  m.onclick=e=>{const v=e.target.dataset.v;if(v!==undefined){m.remove();r(v==='1')}};document.body.append(m)})}
 
 /* ====== LOGIN ====== */
-function loginView(){$('#app').innerHTML=`<div id="login"><form onsubmit="login(event)">
+function loginView(){
+  const app = $('#app');
+  if(!app) return;
+  app.innerHTML=`<div id="login"><form onsubmit="login(event)">
  <small>KASIR</small><h1>${SHOP}</h1>
  <input id="u" placeholder="Username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${sb?'':'kasir'}" required>
  <input id="p" type="password" placeholder="Password" autocomplete="current-password" autocapitalize="none" value="${sb?'':'kasir123'}" required>
  <button class="blue">Masuk</button>
- <span class="muted">${sb?'Terhubung ke Supabase. Masukkan username & password Anda.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini.'}</span></form></div>`}
+ <span class="muted">${sb?'Terhubung ke Supabase. Masukkan username & password Anda.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini.'}</span></form></div>`;
+}
 
 async function login(e){
   e.preventDefault();
@@ -136,10 +148,20 @@ async function logout(){
 }
 
 async function boot(){
- try{let p=await DB.all('products');
-  if(!sb&&!p.length){for(const s of SEED)await DB.add('products',{name:s[0],category:s[1],price:s[2],cost:s[3],active:true});p=await DB.all('products')}
-  S.products=p.filter(x=>x.active);S.tx=(await DB.all('transactions')).sort((a,b)=>b.created_at.localeCompare(a.created_at));S.exp=(await DB.all('expenses')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
-  render()}catch(er){toast('Gagal memuat data: '+er.message)}}
+ try{
+  let p = await DB.all('products');
+  if(!sb && !p.length){
+    for(const s of SEED) await DB.add('products',{name:s[0],category:s[1],price:s[2],cost:s[3],active:true});
+    p = await DB.all('products');
+  }
+  S.products = p.filter(x=>x.active);
+  S.tx = (await DB.all('transactions')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  S.exp = (await DB.all('expenses')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  render();
+ } catch(er){
+  toast('Gagal memuat data: '+er.message);
+ }
+}
 
 /* ====== KASIR ====== */
 const pid=n=>S.products.find(p=>p.name===n)?.id;
@@ -203,7 +225,7 @@ function pengView(){const a=agg('bulanan');
  <p class="muted" style="margin:10px 0">Bulan ${new Date(S.ref).toLocaleDateString('id-ID',{month:'long',year:'numeric'})} · total <b>${rp(a.pe)}</b></p>
  <div class="card tw"><table><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th class="r">Jumlah</th><th></th></tr>
  ${a.E.length?a.E.map(e=>`<tr><td>${dt(e.created_at)}</td><td><span class="chip">${e.category}</span></td><td>${e.note||'-'}</td><td class="r b">${rp(e.amount)}</td><td class="r"><button class="red sm" onclick="delExp(${e.id})">Hapus</button></td></tr>`).join(''):`<tr><td colspan="5" class="muted">Belum ada pengeluaran bulan ini.</td></tr>`}</table></div></div>`}
-async function addExp(){const amount=+$('#ea'].value;if(!(amount>0))return toast('Isi jumlah pengeluaran');
+async function addExp(){const amount=+$('#ea').value;if(!(amount>0))return toast('Isi jumlah pengeluaran');
  try{const e=await DB.add('expenses',{category:$('#ec').value,note:$('#en').value.trim(),amount});S.exp.unshift(e);render();toast('Pengeluaran disimpan')}catch(er){toast(er.message)}}
 async function delExp(id){if(!confirm('Hapus pengeluaran ini?'))return;try{await DB.del('expenses',id);S.exp=S.exp.filter(x=>x.id!==id);render()}catch(er){toast(er.message)}}
 
@@ -234,34 +256,43 @@ function buckets(p,r){const n=p==='harian'?24:p==='mingguan'?7:p==='bulanan'?new
  const key={harian:d=>d.getHours(),mingguan:d=>(d.getDay()+6)%7,bulanan:d=>d.getDate()-1,tahunan:d=>d.getMonth()}[p];
  const lab=i=>p==='harian'?i+':00':p==='mingguan'?DAY[i]:p==='bulanan'?i+1:MON[i];
  return{n,key,labels:[...Array(n)].map((_,i)=>lab(i))}}
-function charts(){S.charts.forEach(c=>c.destroy());S.charts=[];if(S.view!=='laporan')return;
- const a=agg(S.period),b=buckets(S.period,a.r),z=()=>Array(b.n).fill(0);
- const om=z(),lb=z(),pg=z(),cnt=z();
- a.T.forEach(t=>{const k=b.key(new Date(t.created_at));om[k]+=t.total;cnt[k]++;lb[k]+=t.total-t.items.reduce((s,i)=>s+i.qty*(i.cost||0),0)});
- a.E.forEach(e=>{const k=b.key(new Date(e.created_at));pg[k]+=e.amount;lb[k]-=e.amount});
- const prod={};a.T.forEach(t=>t.items.forEach(i=>{prod[i.name]=(prod[i.name]||0)+i.qty}));const top=Object.entries(prod).sort((x,y)=>y[1]-x[1]).slice(0,8);
- const cat={};a.E.forEach(e=>cat[e.category]=(cat[e.category]||0)+e.amount);
- const hr=Array(24).fill(0);a.T.forEach(t=>hr[new Date(t.created_at).getHours()]++);
- const C=['#0f6bb5','#f0c94a','#1c2b52','#c9423f','#2e8b62','#8a6fd1','#e08a3c','#5bb5d6'];
- const mk=(id,type,data,opt={},title)=>S.charts.push(new Chart($('#'+id),{type,data,options:{responsive:true,maintainAspectRatio:false,...opt,plugins:{title:{display:true,text:title,font:{size:14,family:'DM Sans',weight:'bold'},color:'#1c2b52'},...(opt.plugins||{})}}}));
- mk('c1','line',{labels:b.labels,datasets:[{label:'Omzet',data:om,borderColor:C[0],backgroundColor:'#0f6bb533',fill:true,tension:.35},{label:'Pengeluaran',data:pg,borderColor:C[3],tension:.35},{label:'Laba bersih',data:lb,borderColor:C[4],tension:.35}]},{interaction:{mode:'index',intersect:false}},'Tren omzet, pengeluaran & laba bersih');
- mk('c2','doughnut',{labels:['Tunai','QRIS'],datasets:[{data:[a.by('tunai'),a.by('qris')],backgroundColor:[C[0],C[1]]}]},{},'Metode pembayaran');
- mk('c3','bar',{labels:top.map(x=>x[0]),datasets:[{label:'Porsi terjual',data:top.map(x=>x[1]),backgroundColor:C[0]}]},{indexAxis:'y',plugins:{legend:{display:false}}},'Menu terlaris');
- mk('c4','doughnut',{labels:Object.keys(cat),datasets:[{data:Object.values(cat),backgroundColor:C}]},{},'Pengeluaran per kategori');
- mk('c5','bar',{labels:b.labels,datasets:[{label:'Transaksi',data:cnt,backgroundColor:C[1]}]},{plugins:{legend:{display:false}}},'Jumlah transaksi');
- mk('c6','bar',{labels:['Omzet','HPP','Laba kotor','Pengeluaran','Laba bersih'],datasets:[{data:[a.omzet,a.hpp,a.gross,a.pe,a.net],backgroundColor:[C[0],C[6],C[7],C[3],C[4]]}]},{plugins:{legend:{display:false}}},'Ringkasan keuangan')}
+function charts(){
+  S.charts.forEach(c=>c.destroy());
+  S.charts=[];
+  if(S.view!=='laporan' || typeof Chart === 'undefined') return;
+  const a=agg(S.period),b=buckets(S.period,a.r),z=()=>Array(b.n).fill(0);
+  const om=z(),lb=z(),pg=z(),cnt=z();
+  a.T.forEach(t=>{const k=b.key(new Date(t.created_at));om[k]+=t.total;cnt[k]++;lb[k]+=t.total-t.items.reduce((s,i)=>s+i.qty*(i.cost||0),0)});
+  a.E.forEach(e=>{const k=b.key(new Date(e.created_at));pg[k]+=e.amount;lb[k]-=e.amount});
+  const prod={};a.T.forEach(t=>t.items.forEach(i=>{prod[i.name]=(prod[i.name]||0)+i.qty}));const top=Object.entries(prod).sort((x,y)=>y[1]-x[1]).slice(0,8);
+  const cat={};a.E.forEach(e=>cat[e.category]=(cat[e.category]||0)+e.amount);
+  const hr=Array(24).fill(0);a.T.forEach(t=>hr[new Date(t.created_at).getHours()]++);
+  const C=['#0f6bb5','#f0c94a','#1c2b52','#c9423f','#2e8b62','#8a6fd1','#e08a3c','#5bb5d6'];
+  const mk=(id,type,data,opt={},title)=>{
+    const el = $('#'+id);
+    if(el) S.charts.push(new Chart(el,{type,data,options:{responsive:true,maintainAspectRatio:false,...opt,plugins:{title:{display:true,text:title,font:{size:14,family:'DM Sans',weight:'bold'},color:'#1c2b52'},...(opt.plugins||{})}}}));
+  };
+  mk('c1','line',{labels:b.labels,datasets:[{label:'Omzet',data:om,borderColor:C[0],backgroundColor:'#0f6bb533',fill:true,tension:.35},{label:'Pengeluaran',data:pg,borderColor:C[3],tension:.35},{label:'Laba bersih',data:lb,borderColor:C[4],tension:.35}]},{interaction:{mode:'index',intersect:false}},'Tren omzet, pengeluaran & laba bersih');
+  mk('c2','doughnut',{labels:['Tunai','QRIS'],datasets:[{data:[a.by('tunai'),a.by('qris')],backgroundColor:[C[0],C[1]]}]},{},'Metode pembayaran');
+  mk('c3','bar',{labels:top.map(x=>x[0]),datasets:[{label:'Porsi terjual',data:top.map(x=>x[1]),backgroundColor:C[0]}]},{indexAxis:'y',plugins:{legend:{display:false}}},'Menu terlaris');
+  mk('c4','doughnut',{labels:Object.keys(cat),datasets:[{data:Object.values(cat),backgroundColor:C}]},{},'Pengeluaran per kategori');
+  mk('c5','bar',{labels:b.labels,datasets:[{label:'Transaksi',data:cnt,backgroundColor:C[1]}]},{plugins:{legend:{display:false}}},'Jumlah transaksi');
+  mk('c6','bar',{labels:['Omzet','HPP','Laba kotor','Pengeluaran','Laba bersih'],datasets:[{data:[a.omzet,a.hpp,a.gross,a.pe,a.net],backgroundColor:[C[0],C[6],C[7],C[3],C[4]]}]},{plugins:{legend:{display:false}}},'Ringkasan keuangan');
+}
 
 /* ====== EXCEL & WHATSAPP ====== */
 const sheet=(wb,n,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{Info:'Tidak ada data'}]),n);
 function sumRow(p){const a=agg(p);return{Periode:p,Rentang:lbl(a),Transaksi:a.n,Omzet:a.omzet,HPP:a.hpp,'Laba Kotor':a.gross,Pengeluaran:a.pe,'Laba Bersih':a.net,Tunai:a.by('tunai'),QRIS:a.by('qris')}}
-function exportXL(p){const wb=XLSX.utils.book_new(),q=p==='all'?'harian':p,a=agg(q);
+function exportXL(p){if(typeof XLSX === 'undefined') return toast('Library Excel tidak tersedia');
+ const wb=XLSX.utils.book_new(),q=p==='all'?'harian':p,a=agg(q);
  sheet(wb,'Rekap Semua Periode',PER.map(sumRow));
  sheet(wb,'Transaksi',a.T.map(t=>({Tanggal:dt(t.created_at),Jam:hm(t.created_at),Kasir:t.cashier,Metode:t.method,Pesanan:t.items.map(i=>`${i.qty}x ${i.name}`).join('; '),Subtotal:t.subtotal,Diskon:t.discount,Total:t.total,Bayar:t.paid,Kembali:t.change})));
  const pr={};a.T.forEach(t=>t.items.forEach(i=>{const o=pr[i.name]||(pr[i.name]={Menu:i.name,Terjual:0,Omzet:0,HPP:0});o.Terjual+=i.qty;o.Omzet+=i.qty*i.price;o.HPP+=i.qty*(i.cost||0)}));
  sheet(wb,'Produk Terjual',Object.values(pr));
  sheet(wb,'Pengeluaran',a.E.map(e=>({Tanggal:dt(e.created_at),Kategori:e.category,Keterangan:e.note,Jumlah:e.amount})));
  XLSX.writeFile(wb,`Rekap-${SHOP.replace(/ /g,'')}-${q}-${S.ref}.xlsx`)}
-function expXL(){const wb=XLSX.utils.book_new(),cat={};
+function expXL(){if(typeof XLSX === 'undefined') return toast('Library Excel tidak tersedia');
+ const wb=XLSX.utils.book_new(),cat={};
  S.exp.forEach(e=>cat[e.category]=(cat[e.category]||0)+e.amount);
  sheet(wb,'Pengeluaran',S.exp.map(e=>({Tanggal:dt(e.created_at),Kategori:e.category,Keterangan:e.note,Jumlah:e.amount})));
  sheet(wb,'Per Kategori',Object.entries(cat).map(([k,v])=>({Kategori:k,Total:v})));
@@ -292,12 +323,19 @@ function qris(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onlo
 /* ====== SHELL ====== */
 const NAV=[['kasir','🛒','Kasir'],['riwayat','🧾','Riwayat'],['pengeluaran','💸','Biaya'],['laporan','📊','Laporan'],['pengaturan','⚙️','Atur']];
 const V={kasir:kasirView,riwayat:riwayatView,pengeluaran:pengView,laporan:laporanView,pengaturan:setView};
-function render(){const y=window.scrollY,ph=document.activeElement?.placeholder;
- $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
- if(S.view==='kasir')upd();charts();if(ph){const e=[...document.querySelectorAll('input')].find(x=>x.placeholder===ph);if(e&&ph==='Uang diterima'){e.focus();e.setSelectionRange(99,99)}}scrollTo(0,y)}
+function render(){
+ const y=window.scrollY,ph=document.activeElement?.placeholder;
+ const app = $('#app');
+ if(!app) return;
+ app.innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
+ if(S.view==='kasir')upd();
+ charts();
+ if(ph){const e=[...document.querySelectorAll('input')].find(x=>x.placeholder===ph);if(e&&ph==='Uang diterima'){e.focus();e.setSelectionRange(99,99)}}
+ scrollTo(0,y);
+}
 
 /* ====== INISIALISASI APLIKASI ====== */
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   loginView();
 });
 </script>
