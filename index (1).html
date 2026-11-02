@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waroeeng University – Kasir</title>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#fcf5e3;--navy:#1c2b52;--blue:#0f6bb5;--gold:#f0dfa8;--card:#fffdf6;--line:#e6dcbc;--red:#c9423f;--green:#2e8b62}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.5 'DM Sans',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh}
+h1,h2,h3{font-family:'Alfa Slab One',serif;font-weight:400;letter-spacing:.02em}
+h2{color:var(--blue);font-size:20px;margin:18px 0 10px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:var(--navy);color:var(--gold);font-weight:700;transition:transform .12s,filter .15s}
+button:hover{filter:brightness(1.15)}button:active{transform:scale(.95)}
+button.alt{background:var(--gold);color:var(--navy)}button.blue{background:var(--blue);color:#fff}button.red{background:var(--red);color:#fff}
+button.sm{padding:5px 10px;font-size:13px}
+input,select{border:2px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;width:100%}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:0 0 auto}.grow{flex:1 1 140px!important}
+.muted{color:#6b7597;font-size:13px}.r{text-align:right}.b{font-weight:700}
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:20px}
+#login form{width:min(380px,100%);display:grid;gap:12px;text-align:center;animation:rise .6s cubic-bezier(.2,.8,.2,1)}
+#login h1{font-size:32px;color:var(--navy);line-height:1.1}
+#login small{color:var(--blue);font-family:'Alfa Slab One';letter-spacing:.3em}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}}
+/* shell */
+#shell{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+nav{background:var(--navy);padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
+nav .brand{font-family:'Alfa Slab One';color:var(--gold);font-size:18px;line-height:1.1;margin:0 8px 16px}
+nav button{background:none;color:#aeb8d6;text-align:left;display:flex;gap:10px;padding:11px 12px}
+nav button.on{background:var(--gold);color:var(--navy)}
+nav .who{margin-top:auto;color:#aeb8d6;font-size:12px;padding:0 8px;word-break:break-all}
+main{padding:18px;max-width:1200px;width:100%;margin:auto}
+.view{animation:fade .25s ease}@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+.pos{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.prod{position:relative;text-align:left;background:var(--card);color:var(--navy);border:2px solid var(--line);padding:12px;min-height:84px;display:flex;flex-direction:column;justify-content:space-between}
+.prod:hover{border-color:var(--blue)}.prod b{color:var(--blue)}
+.prod i{position:absolute;top:-8px;right:-6px;background:var(--red);color:#fff;border-radius:99px;min-width:26px;height:26px;display:grid;place-items:center;font-style:normal;font-size:13px;animation:pop .25s}
+@keyframes pop{from{transform:scale(0)}}
+.cart{position:sticky;top:14px}
+.line{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line)}
+.q{display:flex;align-items:center;gap:6px}.q button{padding:2px 10px}
+.tot{font-family:'Alfa Slab One';font-size:26px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.seg button{background:#fff;color:var(--navy);border:2px solid var(--line)}.seg .on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chg{background:var(--navy);color:var(--gold);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;font-weight:700;margin:10px 0}
+.chip{display:inline-block;background:var(--blue);color:#fff;border-radius:99px;padding:2px 10px;font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--navy);color:var(--gold);border-radius:14px;padding:14px;animation:fade .4s}.kpi span{font-size:12px;color:#aeb8d6}.kpi b{display:block;font-family:'Alfa Slab One';font-weight:400;font-size:20px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:14px}.charts .card{height:300px}.charts .wide{grid-column:1/-1;height:340px}
+table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--blue)}
+.tw{overflow-x:auto}
+.modal{position:fixed;inset:0;background:#1c2b52cc;display:grid;place-items:center;padding:16px;z-index:50;animation:fade .2s}
+.box{background:var(--card);border-radius:18px;padding:22px;width:min(360px,100%);text-align:center;display:grid;gap:12px;animation:rise .3s}
+.box img{max-width:100%;max-height:300px;margin:auto;border-radius:10px}
+#toast{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:var(--navy);color:var(--gold);padding:10px 18px;border-radius:99px;z-index:99;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+#toast.on{opacity:1}
+#fab{display:none}
+@media(max-width:900px){
+ #shell{grid-template-columns:1fr;padding-bottom:64px}
+ nav{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;padding:6px;z-index:40;justify-content:space-around}
+ nav .brand,nav .who{display:none}nav button{flex-direction:column;align-items:center;gap:0;padding:6px 8px;font-size:11px;text-align:center}
+ .pos{grid-template-columns:1fr}.cart{position:static}
+ #fab{display:block;position:fixed;right:14px;bottom:76px;z-index:30;border-radius:99px;padding:12px 18px;background:var(--blue);color:#fff;box-shadow:0 6px 18px #0004}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="toast"></div>
+<script>
+/* ====== KONFIGURASI SUPABASE (isi dari Project Settings > API). Kosong = mode demo lokal ====== */
+const CFG={SUPABASE_URL:'',SUPABASE_ANON_KEY:''};
+const SHOP='Waroeeng University';
+const sb=CFG.SUPABASE_URL?supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
+const $=s=>document.querySelector(s),rp=n=>'Rp'+Math.round(n||0).toLocaleString('id-ID');
+const LS=k=>JSON.parse(localStorage.getItem(k)||'[]'),SV=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const MON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'],DAY=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+const EXPC=['Bahan Baku','Gas & Listrik','Gaji','Sewa','Peralatan','Lainnya'];
+const SEED=[['Nasi Ayam Sambal Bajak','Makanan',13000,8000],['Nasi Telur Dadar Sambal Bajak','Makanan',9000,5000],['Gorengan','Makanan',1000,600],['Mie Kuah / Goreng','Makanan',7000,4000],['Tambah Telur','Makanan',3000,2000],['Yakult Series','Minuman',10000,8000],['Es Teh / Teh Hangat','Minuman',4000,1000],['Sachetan','Minuman',5000,3500]];
+
+/* ====== DATA LAYER: Supabase atau localStorage ====== */
+const DB={
+ async all(t){if(sb){const{data,error}=await sb.from(t).select('*').order('id');if(error)throw error;return data}return LS(t)},
+ async add(t,r){if(sb){const{data,error}=await sb.from(t).insert(r).select().single();if(error)throw error;return data}
+  const a=LS(t);r={...r,id:Date.now()+a.length,created_at:r.created_at||new Date().toISOString()};a.push(r);SV(t,a);return r},
+ async upd(t,id,p){if(sb){const{error}=await sb.from(t).update(p).eq('id',id);if(error)throw error;return}SV(t,LS(t).map(x=>x.id===id?{...x,...p}:x))},
+ async del(t,id){if(sb){const{error}=await sb.from(t).delete().eq('id',id);if(error)throw error;return}SV(t,LS(t).filter(x=>x.id!==id))}
+};
+
+const S={user:null,products:[],tx:[],exp:[],cart:{},method:'tunai',paid:'',view:'kasir',period:'harian',ref:new Date().toISOString().slice(0,10),bundle:null,charts:[]};
+function toast(m){const t=$('#toast');t.textContent=m;t.className='on';clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',2600)}
+function modal(h){return new Promise(r=>{const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="box">${h}</div>`;
+ m.onclick=e=>{const v=e.target.dataset.v;if(v!==undefined){m.remove();r(v==='1')}};document.body.append(m)})}
+
+/* ====== LOGIN ====== */
+function loginView(){$('#app').innerHTML=`<div id="login"><form onsubmit="login(event)">
+ <small>KASIR</small><h1>${SHOP}</h1>
+ <input id="u" placeholder="${sb?'Email kasir':'Username'}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${sb?'':'kasir'}" required>
+ <input id="p" type="password" placeholder="Password" autocomplete="current-password" autocapitalize="none" value="${sb?'':'kasir123'}" required>
+ <button class="blue">Masuk</button>
+ <span class="muted">${sb?'Terhubung ke Supabase. Pakai akun yang dibuat di Authentication > Users.':'Mode demo: username <b>kasir</b>, password <b>kasir123</b> (sudah terisi). Data tersimpan di browser ini. Isi CFG di index.html untuk memakai Supabase.'}</span></form></div>`}
+async function login(e){e.preventDefault();const u=$('#u').value.trim(),p=$('#p').value;
+ try{if(sb){const{data,error}=await sb.auth.signInWithPassword({email:u,password:p});if(error)throw error;S.user=data.user.email}
+ else{if(u.toLowerCase()!=='kasir'||p.trim()!=='kasir123')throw Error('Username atau password salah (demo: kasir / kasir123)');S.user='kasir'}
+ await boot()}catch(er){toast(/invalid login/i.test(er.message)?'Email/password salah, atau akun belum dibuat di Supabase (Authentication > Users)':er.message)}}
+async function logout(){if(sb)await sb.auth.signOut();S.user=null;S.cart={};loginView()}
+async function boot(){
+ try{let p=await DB.all('products');
+  if(!sb&&!p.length){for(const s of SEED)await DB.add('products',{name:s[0],category:s[1],price:s[2],cost:s[3],active:true});p=await DB.all('products')}
+  S.products=p.filter(x=>x.active);S.tx=(await DB.all('transactions')).sort((a,b)=>b.created_at.localeCompare(a.created_at));S.exp=(await DB.all('expenses')).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  render()}catch(er){toast('Gagal memuat data: '+er.message)}}
+
+/* ====== KASIR ====== */
+const pid=n=>S.products.find(p=>p.name===n)?.id;
+function bundleOn(){const h=new Date().getHours();return S.bundle===null?(h>=7&&h<9):S.bundle}
+function calc(){
+ const items=S.products.filter(p=>S.cart[p.id]).map(p=>({id:p.id,name:p.name,price:p.price,cost:p.cost,qty:S.cart[p.id]}));
+ const sub=items.reduce((a,i)=>a+i.price*i.qty,0);let disc=0,pk=0;
+ if(bundleOn()){const q=n=>S.cart[pid(n)]||0;let teh=q('Es Teh / Teh Hangat');const a=Math.min(q('Nasi Ayam Sambal Bajak'),teh);teh-=a;const b=Math.min(q('Nasi Telur Dadar Sambal Bajak'),teh);pk=a+b;disc=pk*2000}
+ return{items,sub,disc,pk,total:sub-disc,count:items.reduce((a,i)=>a+i.qty,0)}}
+const add=(id,d=1)=>{const n=(S.cart[id]||0)+d;if(n>0)S.cart[id]=n;else delete S.cart[id];render()};
+function setM(m){S.method=m;render()}
+function quick(n){S.paid=n;render()}
+function upd(){const c=calc(),v=+S.paid||0;const e=$('#chg');if(e)e.innerHTML=S.method==='tunai'?`<span>${v>=c.total?'Kembalian':'Kurang'}</span><span>${rp(Math.abs(v-c.total))}</span>`:`<span>QRIS</span><span>Scan & konfirmasi</span>`}
+function prodGrid(cat){return S.products.filter(p=>p.category===cat).map(p=>`<button class="prod" onclick="add(${p.id})">${S.cart[p.id]?`<i>${S.cart[p.id]}</i>`:''}<span>${p.name}</span><b>${rp(p.price)}</b></button>`).join('')}
+function kasirView(){const c=calc();return `<div class="view pos"><section>
+ <div class="row"><h2 class="grow" style="margin:0">Makanan</h2></div><div class="pg">${prodGrid('Makanan')}</div>
+ <h2>Minuman</h2><div class="pg">${prodGrid('Minuman')}</div>
+ ${S.products.some(p=>!['Makanan','Minuman'].includes(p.category))?`<h2>Lainnya</h2><div class="pg">${S.products.filter(p=>!['Makanan','Minuman'].includes(p.category)).map(p=>`<button class="prod" onclick="add(${p.id})">${S.cart[p.id]?`<i>${S.cart[p.id]}</i>`:''}<span>${p.name}</span><b>${rp(p.price)}</b></button>`).join('')}</div>`:''}
+ </section>
+ <aside class="card cart" id="cart"><div class="row"><h3 class="grow">Pesanan</h3>${c.count?`<button class="alt sm" onclick="S.cart={};render()">Kosongkan</button>`:''}</div>
+ ${c.items.length?c.items.map(i=>`<div class="line"><div class="grow"><div>${i.name}</div><div class="muted">${rp(i.price)}</div></div>
+  <div class="q"><button class="alt" onclick="add(${i.id},-1)" aria-label="kurangi">−</button><b>${i.qty}</b><button class="alt" onclick="add(${i.id})" aria-label="tambah">+</button></div>
+  <button class="red sm" onclick="add(${i.id},-${i.qty})" aria-label="hapus">✕</button></div>`).join(''):`<p class="muted" style="padding:18px 0">Belum ada pesanan. Ketuk menu untuk menambah.</p>`}
+ <div class="row" style="margin-top:10px"><span class="grow muted">Subtotal</span><span>${rp(c.sub)}</span></div>
+ <div class="row"><span class="grow muted">Paket bundling <span class="chip" onclick="S.bundle=!bundleOn();render()" style="cursor:pointer">${bundleOn()?'aktif':'nonaktif'}</span></span><span style="color:var(--green)">−${rp(c.disc)}</span></div>
+ <div class="row"><b class="grow">Total</b><span class="tot">${rp(c.total)}</span></div>
+ <div class="seg" style="margin:10px 0"><button class="${S.method==='tunai'?'on':''}" onclick="setM('tunai')">Tunai</button><button class="${S.method==='qris'?'on':''}" onclick="setM('qris')">QRIS</button></div>
+ ${S.method==='tunai'?`<input type="number" inputmode="numeric" min="0" placeholder="Uang diterima" value="${S.paid}" oninput="S.paid=this.value;upd()">
+ <div class="row" style="margin-top:8px"><button class="alt sm" onclick="quick(${c.total})">Uang pas</button>${[5000,10000,20000,50000,100000].map(n=>`<button class="alt sm" onclick="quick(${n})">${n/1000}rb</button>`).join('')}</div>`:''}
+ <div class="chg" id="chg"></div>
+ <button class="blue" style="width:100%;padding:14px" onclick="pay()">Bayar ${c.total?rp(c.total):''}</button></aside>
+ <button id="fab" onclick="$('#cart').scrollIntoView({behavior:'smooth'})">🛒 ${c.count} item · ${rp(c.total)}</button></div>`}
+async function pay(){const c=calc();if(!c.items.length)return toast('Pilih menu dulu');
+ const paid=S.method==='tunai'?(+S.paid||0):c.total;if(paid<c.total)return toast('Uang diterima kurang '+rp(c.total-paid));
+ if(S.method==='qris'){const img=localStorage.getItem('qris_img');
+  if(!await modal(`<h3>Bayar QRIS</h3><div class="tot">${rp(c.total)}</div>${img?`<img src="${img}" alt="QRIS">`:`<p class="muted">Gambar QRIS belum diunggah. Unggah di menu Pengaturan.</p>`}<button class="blue" data-v="1">Pembayaran diterima</button><button class="alt" data-v="0">Batal</button>`))return}
+ try{const t=await DB.add('transactions',{cashier:S.user,method:S.method,subtotal:c.sub,discount:c.disc,total:c.total,paid,change:paid-c.total,items:c.items});
+  S.tx.unshift(t);S.cart={};S.paid='';render();
+  await modal(`<h3>Transaksi berhasil</h3>${S.method==='tunai'?`<div class="muted">Kembalian</div><div class="tot">${rp(t.change)}</div>`:`<div class="tot">${rp(t.total)}</div><div class="muted">via QRIS</div>`}<button class="blue" data-v="1">Transaksi baru</button>`)
+ }catch(er){toast('Gagal menyimpan: '+er.message)}}
+
+/* ====== RIWAYAT + EDIT ====== */
+const hm=d=>new Date(d).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+const dt=d=>new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+function riwayatView(){const a=agg('harian');
+ return `<div class="view"><div class="row"><h2 class="grow" style="margin:0">Riwayat transaksi</h2><input type="date" value="${S.ref}" onchange="S.ref=this.value;render()" style="width:auto"><button class="blue" onclick="exportXL('harian')">Excel harian</button></div>
+ <p class="muted" style="margin:6px 0 12px">Salah input? Ketuk Edit untuk memuat ulang pesanan ke kasir, lalu bayar ulang. Transaksi lama otomatis dihapus.</p>
+ <div class="card tw"><table><tr><th>Jam</th><th>Pesanan</th><th>Metode</th><th class="r">Total</th><th></th></tr>
+ ${a.T.length?a.T.map(t=>`<tr><td>${hm(t.created_at)}<div class="muted">${t.cashier||''}</div></td><td>${t.items.map(i=>`${i.qty}× ${i.name}`).join('<br>')}${t.discount?`<div class="muted">Bundling −${rp(t.discount)}</div>`:''}</td>
+ <td><span class="chip">${t.method}</span></td><td class="r b">${rp(t.total)}</td>
+ <td class="r"><button class="alt sm" onclick="editTx(${t.id})">Edit</button> <button class="red sm" onclick="delTx(${t.id})">Hapus</button></td></tr>`).join(''):`<tr><td colspan="5" class="muted">Belum ada transaksi pada tanggal ini.</td></tr>`}</table></div></div>`}
+async function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t||!confirm('Muat ulang pesanan ini ke kasir? Transaksi lama akan dihapus.'))return;
+ try{await DB.del('transactions',id);S.tx=S.tx.filter(x=>x.id!==id);S.cart={};t.items.forEach(i=>{if(S.products.some(p=>p.id===i.id))S.cart[i.id]=i.qty});S.view='kasir';render();toast('Pesanan dimuat. Perbaiki lalu bayar.')}catch(er){toast(er.message)}}
+async function delTx(id){if(!confirm('Hapus transaksi ini?'))return;try{await DB.del('transactions',id);S.tx=S.tx.filter(x=>x.id!==id);render()}catch(er){toast(er.message)}}
+
+/* ====== PENGELUARAN ====== */
+function pengView(){const a=agg('bulanan');
+ return `<div class="view"><div class="row"><h2 class="grow" style="margin:0">Catatan pengeluaran</h2><button class="blue" onclick="expXL()">Excel pengeluaran</button></div>
+ <div class="card row" style="margin-top:12px"><select id="ec" class="grow">${EXPC.map(c=>`<option>${c}</option>`).join('')}</select>
+ <input id="en" class="grow" placeholder="Keterangan (mis. beli ayam 5 kg)"><input id="ea" class="grow" type="number" inputmode="numeric" placeholder="Jumlah (Rp)"><button class="blue" onclick="addExp()">Simpan</button></div>
+ <p class="muted" style="margin:10px 0">Bulan ${new Date(S.ref).toLocaleDateString('id-ID',{month:'long',year:'numeric'})} · total <b>${rp(a.pe)}</b></p>
+ <div class="card tw"><table><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th class="r">Jumlah</th><th></th></tr>
+ ${a.E.length?a.E.map(e=>`<tr><td>${dt(e.created_at)}</td><td><span class="chip">${e.category}</span></td><td>${e.note||'-'}</td><td class="r b">${rp(e.amount)}</td><td class="r"><button class="red sm" onclick="delExp(${e.id})">Hapus</button></td></tr>`).join(''):`<tr><td colspan="5" class="muted">Belum ada pengeluaran bulan ini.</td></tr>`}</table></div></div>`}
+async function addExp(){const amount=+$('#ea').value;if(!(amount>0))return toast('Isi jumlah pengeluaran');
+ try{const e=await DB.add('expenses',{category:$('#ec').value,note:$('#en').value.trim(),amount});S.exp.unshift(e);render();toast('Pengeluaran disimpan')}catch(er){toast(er.message)}}
+async function delExp(id){if(!confirm('Hapus pengeluaran ini?'))return;try{await DB.del('expenses',id);S.exp=S.exp.filter(x=>x.id!==id);render()}catch(er){toast(er.message)}}
+
+/* ====== AGREGASI ====== */
+function range(p,ref){const n=new Date(ref+'T00:00:00'),y=n.getFullYear(),m=n.getMonth(),d=n.getDate();
+ if(p==='harian')return[new Date(y,m,d),new Date(y,m,d+1)];
+ if(p==='mingguan'){const w=(n.getDay()+6)%7;return[new Date(y,m,d-w),new Date(y,m,d-w+7)]}
+ if(p==='bulanan')return[new Date(y,m,1),new Date(y,m+1,1)];return[new Date(y,0,1),new Date(y+1,0,1)]}
+const inR=(r,x)=>{const t=new Date(x.created_at);return t>=r[0]&&t<r[1]};
+function agg(p){const r=range(p,S.ref),T=S.tx.filter(x=>inR(r,x)),E=S.exp.filter(x=>inR(r,x));
+ const omzet=T.reduce((a,x)=>a+x.total,0),hpp=T.reduce((a,x)=>a+x.items.reduce((s,i)=>s+i.qty*(i.cost||0),0),0),pe=E.reduce((a,x)=>a+x.amount,0);
+ return{r,T,E,omzet,hpp,gross:omzet-hpp,pe,net:omzet-hpp-pe,n:T.length,avg:T.length?omzet/T.length:0,
+  by:m=>T.filter(x=>x.method===m).reduce((a,x)=>a+x.total,0)}}
+const lbl=a=>a.r[0].toLocaleDateString('id-ID')+(a.r[1]-a.r[0]>864e5?' – '+new Date(a.r[1]-1).toLocaleDateString('id-ID'):'');
+
+/* ====== LAPORAN + GRAFIK ====== */
+const PER=['harian','mingguan','bulanan','tahunan'];
+function laporanView(){const a=agg(S.period);
+ return `<div class="view"><div class="row"><h2 class="grow" style="margin:0">Laporan penjualan</h2>
+ <input type="date" value="${S.ref}" onchange="S.ref=this.value;render()" style="width:auto"></div>
+ <div class="seg" style="grid-template-columns:repeat(4,1fr);margin:12px 0">${PER.map(p=>`<button class="${S.period===p?'on':''}" onclick="S.period='${p}';render()">${p[0].toUpperCase()+p.slice(1)}</button>`).join('')}</div>
+ <p class="muted" style="margin-bottom:10px">${lbl(a)}</p>
+ <div class="kpis">${[['Omzet',a.omzet],['HPP (modal)',a.hpp],['Laba kotor',a.gross],['Pengeluaran',a.pe],['Laba bersih',a.net],['Transaksi',a.n,1],['Rata-rata/transaksi',a.avg],['Tunai',a.by('tunai')],['QRIS',a.by('qris')]].map(k=>`<div class="kpi"><span>${k[0]}</span><b>${k[2]?k[1]:rp(k[1])}</b></div>`).join('')}</div>
+ <div class="row" style="margin-top:14px"><button class="blue" onclick="exportXL(S.period)">Rekap Excel ${S.period}</button><button class="alt" onclick="exportXL('all')">Excel semua periode</button><button class="blue" onclick="wa(S.period)">Kirim ke WhatsApp</button></div>
+ <p class="muted" style="margin-top:6px">Tombol WhatsApp membuka WhatsApp dengan teks laporan; pilih grup tujuan lalu kirim.</p>
+ <div class="charts"><div class="card wide"><canvas id="c1"></canvas></div><div class="card"><canvas id="c2"></canvas></div><div class="card"><canvas id="c3"></canvas></div><div class="card"><canvas id="c4"></canvas></div><div class="card"><canvas id="c5"></canvas></div><div class="card"><canvas id="c6"></canvas></div></div></div>`}
+function buckets(p,r){const n=p==='harian'?24:p==='mingguan'?7:p==='bulanan'?new Date(r[0].getFullYear(),r[0].getMonth()+1,0).getDate():12;
+ const key={harian:d=>d.getHours(),mingguan:d=>(d.getDay()+6)%7,bulanan:d=>d.getDate()-1,tahunan:d=>d.getMonth()}[p];
+ const lab=i=>p==='harian'?i+':00':p==='mingguan'?DAY[i]:p==='bulanan'?i+1:MON[i];
+ return{n,key,labels:[...Array(n)].map((_,i)=>lab(i))}}
+function charts(){S.charts.forEach(c=>c.destroy());S.charts=[];if(S.view!=='laporan')return;
+ const a=agg(S.period),b=buckets(S.period,a.r),z=()=>Array(b.n).fill(0);
+ const om=z(),lb=z(),pg=z(),cnt=z();
+ a.T.forEach(t=>{const k=b.key(new Date(t.created_at));om[k]+=t.total;cnt[k]++;lb[k]+=t.total-t.items.reduce((s,i)=>s+i.qty*(i.cost||0),0)});
+ a.E.forEach(e=>{const k=b.key(new Date(e.created_at));pg[k]+=e.amount;lb[k]-=e.amount});
+ const prod={};a.T.forEach(t=>t.items.forEach(i=>{prod[i.name]=(prod[i.name]||0)+i.qty}));const top=Object.entries(prod).sort((x,y)=>y[1]-x[1]).slice(0,8);
+ const cat={};a.E.forEach(e=>cat[e.category]=(cat[e.category]||0)+e.amount);
+ const hr=Array(24).fill(0);a.T.forEach(t=>hr[new Date(t.created_at).getHours()]++);
+ const C=['#0f6bb5','#f0c94a','#1c2b52','#c9423f','#2e8b62','#8a6fd1','#e08a3c','#5bb5d6'];
+ const mk=(id,type,data,opt={},title)=>S.charts.push(new Chart($('#'+id),{type,data,options:{responsive:true,maintainAspectRatio:false,...opt,plugins:{title:{display:true,text:title,font:{size:14,family:'DM Sans',weight:'bold'},color:'#1c2b52'},...(opt.plugins||{})}}}));
+ mk('c1','line',{labels:b.labels,datasets:[{label:'Omzet',data:om,borderColor:C[0],backgroundColor:'#0f6bb533',fill:true,tension:.35},{label:'Pengeluaran',data:pg,borderColor:C[3],tension:.35},{label:'Laba bersih',data:lb,borderColor:C[4],tension:.35}]},{interaction:{mode:'index',intersect:false}},'Tren omzet, pengeluaran & laba bersih');
+ mk('c2','doughnut',{labels:['Tunai','QRIS'],datasets:[{data:[a.by('tunai'),a.by('qris')],backgroundColor:[C[0],C[1]]}]},{},'Metode pembayaran');
+ mk('c3','bar',{labels:top.map(x=>x[0]),datasets:[{label:'Porsi terjual',data:top.map(x=>x[1]),backgroundColor:C[0]}]},{indexAxis:'y',plugins:{legend:{display:false}}},'Menu terlaris');
+ mk('c4','doughnut',{labels:Object.keys(cat),datasets:[{data:Object.values(cat),backgroundColor:C}]},{},'Pengeluaran per kategori');
+ mk('c5','bar',{labels:b.labels,datasets:[{label:'Transaksi',data:cnt,backgroundColor:C[1]}]},{plugins:{legend:{display:false}}},'Jumlah transaksi');
+ mk('c6','bar',{labels:['Omzet','HPP','Laba kotor','Pengeluaran','Laba bersih'],datasets:[{data:[a.omzet,a.hpp,a.gross,a.pe,a.net],backgroundColor:[C[0],C[6],C[7],C[3],C[4]]}]},{plugins:{legend:{display:false}}},'Ringkasan keuangan')}
+
+/* ====== EXCEL & WHATSAPP ====== */
+const sheet=(wb,n,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{Info:'Tidak ada data'}]),n);
+function sumRow(p){const a=agg(p);return{Periode:p,Rentang:lbl(a),Transaksi:a.n,Omzet:a.omzet,HPP:a.hpp,'Laba Kotor':a.gross,Pengeluaran:a.pe,'Laba Bersih':a.net,Tunai:a.by('tunai'),QRIS:a.by('qris')}}
+function exportXL(p){const wb=XLSX.utils.book_new(),q=p==='all'?'harian':p,a=agg(q);
+ sheet(wb,'Rekap Semua Periode',PER.map(sumRow));
+ sheet(wb,'Transaksi',a.T.map(t=>({Tanggal:dt(t.created_at),Jam:hm(t.created_at),Kasir:t.cashier,Metode:t.method,Pesanan:t.items.map(i=>`${i.qty}x ${i.name}`).join('; '),Subtotal:t.subtotal,Diskon:t.discount,Total:t.total,Bayar:t.paid,Kembali:t.change})));
+ const pr={};a.T.forEach(t=>t.items.forEach(i=>{const o=pr[i.name]||(pr[i.name]={Menu:i.name,Terjual:0,Omzet:0,HPP:0});o.Terjual+=i.qty;o.Omzet+=i.qty*i.price;o.HPP+=i.qty*(i.cost||0)}));
+ sheet(wb,'Produk Terjual',Object.values(pr));
+ sheet(wb,'Pengeluaran',a.E.map(e=>({Tanggal:dt(e.created_at),Kategori:e.category,Keterangan:e.note,Jumlah:e.amount})));
+ XLSX.writeFile(wb,`Rekap-${SHOP.replace(/ /g,'')}-${q}-${S.ref}.xlsx`)}
+function expXL(){const wb=XLSX.utils.book_new(),cat={};
+ S.exp.forEach(e=>cat[e.category]=(cat[e.category]||0)+e.amount);
+ sheet(wb,'Pengeluaran',S.exp.map(e=>({Tanggal:dt(e.created_at),Kategori:e.category,Keterangan:e.note,Jumlah:e.amount})));
+ sheet(wb,'Per Kategori',Object.entries(cat).map(([k,v])=>({Kategori:k,Total:v})));
+ XLSX.writeFile(wb,`Pengeluaran-${SHOP.replace(/ /g,'')}.xlsx`)}
+function wa(p){const a=agg(p);
+ const t=`*Laporan ${p.toUpperCase()} – ${SHOP}*\n${lbl(a)}\n\nTransaksi: ${a.n}\nOmzet: ${rp(a.omzet)}\nHPP: ${rp(a.hpp)}\nLaba kotor: ${rp(a.gross)}\nPengeluaran: ${rp(a.pe)}\n*Laba bersih: ${rp(a.net)}*\nTunai: ${rp(a.by('tunai'))} | QRIS: ${rp(a.by('qris'))}\n\n*Transaksi:*\n`+
+ a.T.slice(0,40).map((x,i)=>`${i+1}. ${hm(x.created_at)} ${x.items.map(j=>j.qty+'x '+j.name).join(', ')} = ${rp(x.total)} (${x.method})`).join('\n')+(a.n>40?`\n…dan ${a.n-40} transaksi lain (lihat Excel)`:'');
+ window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')}
+
+/* ====== PENGATURAN ====== */
+function setView(){return `<div class="view"><h2>Pengaturan menu & harga</h2>
+ <div class="card tw"><table><tr><th>Menu</th><th>Kategori</th><th>Harga</th><th>HPP</th><th></th></tr>
+ ${S.products.map(p=>`<tr><td>${p.name}</td><td>${p.category}</td>
+ <td><input type="number" value="${p.price}" onchange="editP(${p.id},'price',this.value)" style="width:100px"></td>
+ <td><input type="number" value="${p.cost}" onchange="editP(${p.id},'cost',this.value)" style="width:100px"></td>
+ <td><button class="red sm" onclick="delP(${p.id})">Hapus</button></td></tr>`).join('')}</table></div>
+ <div class="card row" style="margin-top:12px"><input id="pn" class="grow" placeholder="Nama menu baru"><select id="pc" class="grow"><option>Makanan</option><option>Minuman</option></select>
+ <input id="pp" class="grow" type="number" placeholder="Harga"><input id="ph" class="grow" type="number" placeholder="HPP"><button class="blue" onclick="addP()">Tambah menu</button></div>
+ <p class="muted" style="margin-top:6px">HPP dipakai menghitung laba kotor. Nilai awal hanya perkiraan; sesuaikan dengan modal asli Anda. Bundling hanya berlaku pada menu bernama persis seperti bawaan.</p>
+ <h2>Gambar QRIS</h2><div class="card"><input type="file" accept="image/*" onchange="qris(this)"><p class="muted" style="margin-top:6px">Unggah gambar QRIS toko; ditampilkan saat memilih pembayaran QRIS. Disimpan di perangkat ini.</p></div>
+ <div style="margin-top:16px"><button class="red" onclick="logout()">Keluar</button></div></div>`}
+async function editP(id,f,v){try{await DB.upd('products',id,{[f]:+v});S.products.find(p=>p.id===id)[f]=+v;toast('Tersimpan')}catch(er){toast(er.message)}}
+async function delP(id){if(!confirm('Hapus menu ini dari kasir? Riwayat lama tetap aman.'))return;try{await DB.upd('products',id,{active:false});S.products=S.products.filter(p=>p.id!==id);delete S.cart[id];render()}catch(er){toast(er.message)}}
+async function addP(){const name=$('#pn').value.trim(),price=+$('#pp').value;if(!name||!(price>0))return toast('Isi nama dan harga');
+ try{const p=await DB.add('products',{name,category:$('#pc').value,price,cost:+$('#ph').value||0,active:true});S.products.push(p);render()}catch(er){toast(er.message)}}
+function qris(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{localStorage.setItem('qris_img',r.result);toast('QRIS tersimpan')}catch{toast('Gambar terlalu besar')}};r.readAsDataURL(f)}
+
+/* ====== SHELL ====== */
+const NAV=[['kasir','🛒','Kasir'],['riwayat','🧾','Riwayat'],['pengeluaran','💸','Biaya'],['laporan','📊','Laporan'],['pengaturan','⚙️','Atur']];
+const V={kasir:kasirView,riwayat:riwayatView,pengeluaran:pengView,laporan:laporanView,pengaturan:setView};
+function render(){const y=window.scrollY,ph=document.activeElement?.placeholder;
+ $('#app').innerHTML=`<div id="shell"><nav><div class="brand">WAROEENG<br>UNIVERSITY</div>${NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="S.view='${n[0]}';render();scrollTo(0,0)"><span>${n[1]}</span>${n[2]}</button>`).join('')}<div class="who">Kasir: ${S.user}</div></nav><main>${V[S.view]()}</main></div>`;
+ if(S.view==='kasir')upd();charts();if(ph){const e=[...document.querySelectorAll('input')].find(x=>x.placeholder===ph);if(e&&ph==='Uang diterima'){e.focus();e.setSelectionRange(99,99)}}scrollTo(0,y)}
+(async()=>{if(sb){const{data}=await sb.auth.getSession();if(data.session){S.user=data.session.user.email;return boot()}}loginView()})();
+</script>
+</body>
+</html>
